@@ -1,68 +1,64 @@
 import streamlit as st
-from datetime import date
+from streamlit_option_menu import option_menu
 
-import yfinance as yf
-from prophet import Prophet
-from prophet.plot import plot_plotly
-from plotly import graph_objs as go
+import login_page
+import about  
+import stock_forecast  
 
+# Page configurations
+st.set_page_config(page_title="StockForecast", page_icon=":chart_with_upwards_trend:", layout="wide")
 
-START = "2010-01-01"
-TODAY = date.today().strftime("%Y-%m-%d")
+# Hide default Streamlit hamburger menu and footer
+hide_st_style = """
+            <style>
+            #MainMenu {visibility: hidden;}
+            footer {visibility: hidden;}
+            </style>
+            """
+st.markdown(hide_st_style, unsafe_allow_html=True)
 
-st.set_page_config(page_title="StockForecast", page_icon=":chart_with_upwards_trend:")
-st.title('Stock📈Forecast')
+# Sidebar navigation
+with st.sidebar:
+    selected = option_menu(
+        menu_title=None,
+        options=["Login", "About", "Stock Forecast"],
+        icons=["house", "info-circle", "bar-chart"],
+        menu_icon=None,  
+        default_index=0,
+    )
 
-stocks = ('GOOG', 'AAPL', 'MSFT', 'GME', 'TSLA', 'AMZN', 'NFLX', 'FB', 'SBIN.BO', 'RELIANCE.NS', 'INFY', 'TATASTEEL.NS','TATAMOTORS.NS')
-selected_stock = st.selectbox('Select dataset for prediction', stocks)
-
-n_years = st.slider('Years of prediction:', 1, 4)
-period = n_years * 365
-
-
-@st.cache_data
-def load_data(ticker):
-    data = yf.download(ticker, START, TODAY)
-    data.reset_index(inplace=True)
-    return data
-
-	
-data_load_state = st.text('Loading data...')
-data = load_data(selected_stock)
-data_load_state.text('Loading data... done!')
-
-st.subheader('Raw data')
-st.write(data.tail())
-
-# Plot raw data
-def plot_raw_data():
-	fig = go.Figure()
-	fig.add_trace(go.Scatter(x=data['Date'], y=data['Open'], name="stock_open"))
-	fig.add_trace(go.Scatter(x=data['Date'], y=data['Close'], name="stock_close"))
-	fig.layout.update(title_text='Time Series data with Rangeslider', xaxis_rangeslider_visible=True)
-	st.plotly_chart(fig)
-	
-plot_raw_data()
-
-# Predict forecast with Prophet.
-df_train = data[['Date','Close']]
-df_train = df_train.rename(columns={"Date": "ds", "Close": "y"})
-
-m = Prophet()
-m.fit(df_train)
-future = m.make_future_dataframe(periods=period)
-forecast = m.predict(future)
-
-# Show and plot forecast
-st.subheader('Forecast data')
-st.write(forecast.tail())
-    
-st.write(f'Forecast plot for {n_years} years')
-fig1 = plot_plotly(m, forecast)
-st.plotly_chart(fig1)
-
-st.write("Forecast components")
-fig2 = m.plot_components(forecast)
-st.write(fig2)
+def centered_title(title):
+    st.markdown(f"<h1 style='text-align: center;'>{title}</h1>", unsafe_allow_html=True)
 
 
+page_bg = """
+<style>
+    .stApp {
+        background-image: url("https://miro.medium.com/v2/resize:fit:1400/1*hnJmoDkR6-inqCe_JRxW0w.png");
+        background-size: cover;
+        background-repeat: no-repeat;
+        background-attachment: fixed;
+        background-position: center;
+    }
+</style>
+"""
+
+# Pages
+if selected == "Login":
+    st.markdown(page_bg, unsafe_allow_html=True)
+    centered_title('Stock Forecast')
+    login_page.main()
+
+if st.session_state.get("authenticated", False):
+
+    if selected == "About":
+        centered_title('About')
+        about.about()
+
+    if selected == "Stock Forecast":
+        st.markdown(page_bg, unsafe_allow_html=True)
+        centered_title('Stock📈Forecast')
+        stock_forecast.stock_forecast()  
+
+else:
+    st.error("Please log in to access this section.")
